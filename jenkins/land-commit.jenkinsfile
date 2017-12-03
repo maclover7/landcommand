@@ -1,0 +1,52 @@
+#!/usr/bin/env groovy
+
+pipeline {
+    agent any
+
+    parameters {
+        string(name: 'PR_ID', defaultValue: 'nodejs/', description: "Examples are nodejs/build#922 and nodejs/build#928.")
+    }
+
+    stages {
+        stage('Setup Ruby and committer-tools') {
+            steps {
+                withEnv(["PATH=/Users/jon/.rbenv/shims:/Users/jon/.rbenv/bin:/Users/jon/.rbenv/shims:/usr/local/bin:/usr/bin:/bin:/usr/sbin"]) {
+                    // Setup Ruby
+                    sh 'eval "$(rbenv init -)"'
+                    sh 'rbenv global 2.4.2'
+                    echo "Running Ruby version: ${sh(script: 'ruby -v', returnStdout: true).trim()}"
+
+                    // Setup committer-tools
+                    sh 'gem install committer-tools -v 0.1.9'
+                    sh 'committer-tools'
+                }
+            }
+        }
+
+        stage('land the pr!') {
+            steps {
+                withEnv(["PATH=/Users/jon/.rbenv/shims:/Users/jon/.rbenv/bin:/Users/jon/.rbenv/shims:/usr/local/bin:/usr/bin:/bin:/usr/sbin"]) {
+                    dir('/Users/jon/code/nodejs/node') {
+                        sh 'git checkout master'
+                        setEnvVar(env, params)
+                        sh'''
+                            committer-tools land
+                        '''
+                    }
+                }
+            }
+        }
+
+        stage('conclude') {
+            steps {
+                dir('/Users/jon/code/nodejs/node') {
+                    echo "COMMIT LANDED IN: ${sh(script: 'git rev-parse HEAD', returnStdout: true).trim()}"
+                }
+            }
+        }
+    }
+}
+
+def setEnvVar(env, params) {
+    env.COMMITTER_TOOLS_PR_ID = params.PR_ID
+}
