@@ -30,7 +30,7 @@ pipeline {
                         sh 'git checkout master'
                         setEnvVar(env, params)
                         sh'''
-                            committer-tools land
+                            BOT=bot committer-tools land
                         '''
                     }
                 }
